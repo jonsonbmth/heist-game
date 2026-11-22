@@ -120,18 +120,20 @@ function coneFadeTexture() {
   });
 }
 
-// Black marble with white and gold veins, like the reference floor.
+// Black marble with strong white and gold veins, like the reference
+// floor: a lighter base, denser veins and a polished sheen, so the
+// floor reads bright and rich at the low camera's grazing angle.
 function marbleTexture(seed) {
   const rnd = mulberry32(seed);
   return canvasTexture(1024, 1024, (g, w, h) => {
-    g.fillStyle = '#232329';
+    g.fillStyle = '#303038';
     g.fillRect(0, 0, w, h);
     // Large soft mottling.
     for (let i = 0; i < 14; i++) {
       const x = rnd() * w, y = rnd() * h, r = 120 + rnd() * 260;
       const grad = g.createRadialGradient(x, y, 0, x, y, r);
       const v = rnd() > 0.5 ? '255,255,255' : '0,0,0';
-      grad.addColorStop(0, `rgba(${v},${0.05 + rnd() * 0.05})`);
+      grad.addColorStop(0, `rgba(${v},${0.06 + rnd() * 0.06})`);
       grad.addColorStop(1, `rgba(${v},0)`);
       g.fillStyle = grad;
       g.fillRect(x - r, y - r, r * 2, r * 2);
@@ -153,9 +155,9 @@ function marbleTexture(seed) {
       }
       g.stroke();
     }
-    for (let i = 0; i < 26; i++) vein('rgba(230,235,245,A)', 0.08 + rnd() * 0.12, 1 + rnd() * 1.6);
-    for (let i = 0; i < 8; i++) vein('rgba(205,165,85,A)', 0.1 + rnd() * 0.1, 0.8 + rnd() * 1);
-    for (let i = 0; i < 5; i++) vein('rgba(240,244,255,A)', 0.22 + rnd() * 0.1, 0.8);
+    for (let i = 0; i < 44; i++) vein('rgba(230,235,245,A)', 0.14 + rnd() * 0.16, 1 + rnd() * 1.4);
+    for (let i = 0; i < 12; i++) vein('rgba(205,165,85,A)', 0.14 + rnd() * 0.12, 0.8 + rnd() * 1);
+    for (let i = 0; i < 10; i++) vein('rgba(240,244,255,A)', 0.3 + rnd() * 0.15, 1.0);
   });
 }
 
@@ -293,11 +295,17 @@ function sectorRingGeometry(radius, halfAngle) {
 // always sits 8.5 units south of the thief, so no column stands in the
 // south hall band where the camera travels — the hall columns sit at the
 // room's east side instead, and the vault-flank columns stand clear of
-// the vault door's face so the door reads as the backdrop.
+// the vault door's face so the door reads as the backdrop. Job 1's west
+// vault-flank column stands INSIDE the vault room (21.8, 5.2): from the
+// cover camera the sight line to the door crosses (22.8, 7.9), so a
+// column there would cut the door in half. The north-east corner
+// column sits south of the corner (z 4.2) for the same reason: the
+// vault door stands close to the east wall, and a corner column at
+// (28.3, 1.7) crosses the door's right edge from the cover camera.
 const COLUMNS = {
-  1: [[1.7, 1.7], [28.3, 1.7], [1.7, 16.3], [28.3, 16.3], [22.8, 7.9], [28.2, 7.9], [13.5, 7.5], [27.5, 12.5]],
-  2: [[1.7, 1.7], [28.3, 1.7], [1.7, 16.3], [28.3, 16.3], [21.8, 7.9], [27.2, 7.9], [13.5, 7.5], [27.5, 12.5]],
-  3: [[1.7, 1.7], [30.3, 1.7], [1.7, 18.3], [30.3, 18.3], [23.8, 8.9], [29.2, 8.9], [14.5, 8.5], [30.3, 13.5]],
+  1: [[1.7, 1.7], [28.3, 4.2], [1.7, 16.3], [28.3, 16.3], [21.8, 5.2], [28.2, 7.9], [13.5, 7.5], [27.5, 12.5]],
+  2: [[1.7, 1.7], [28.3, 4.2], [1.7, 16.3], [28.3, 16.3], [21.8, 7.9], [27.2, 7.9], [13.5, 7.5], [27.5, 12.5]],
+  3: [[1.7, 1.7], [30.3, 4.2], [1.7, 18.3], [30.3, 18.3], [23.8, 8.9], [29.2, 8.9], [14.5, 8.5], [30.3, 13.5]],
 };
 // Red carpet runner: centre x, from y0 (vault gap) to y1 (south hall).
 const RUNNERS = {
@@ -328,6 +336,14 @@ export function createRenderer(canvas) {
   const CAM_FOV = 58;
   const LOOK_AHEAD = 3.5;
   const LOOK_HEIGHT = 0.9;
+  // Staged shots (cover / smoke / win / caught) use a wider, higher
+  // establishing camera so the whole vault hall reads in one grand frame
+  // like the reference: the vault door, the columns, the carpet and the
+  // guards all in view at once. Live play keeps the closer follow camera.
+  const STAGE_HEIGHT = 6.2;
+  const STAGE_FOV = 70;
+  const STAGE_LOOK_AHEAD = 6.0;
+  const STAGE_LOOK_HEIGHT = 1.3;
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.1, 200);
   camera.position.set(0, CAM_HEIGHT, CAM_BACK);
   const desiredPos = new THREE.Vector3();
@@ -449,6 +465,25 @@ export function createRenderer(canvas) {
       const badge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.13, 0.02), goldMat);
       badge.position.set(0, 1.3, 0.23);
       g.add(badge);
+      // A simple readable face: dark eyes, a nose and a mouth on the
+      // skin-tone head. The eyes sit low (y 1.63) so the cap brim does
+      // not hide them from the low camera's downward angle.
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x14100d, roughness: 0.4 });
+      for (const s of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), eyeMat);
+        eye.position.set(s * 0.062, 1.63, 0.155);
+        g.add(eye);
+      }
+      const noseMat = new THREE.MeshStandardMaterial({ color: 0xb98d63, roughness: 0.8 });
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), noseMat);
+      nose.position.set(0, 1.59, 0.158);
+      g.add(nose);
+      const mouth = new THREE.Mesh(
+        new THREE.BoxGeometry(0.09, 0.018, 0.012),
+        new THREE.MeshStandardMaterial({ color: 0x5a2e22, roughness: 0.8 }),
+      );
+      mouth.position.set(0, 1.55, 0.152);
+      g.add(mouth);
     }
     return { group: g, legL, legR, armL, armR };
   }
@@ -597,17 +632,29 @@ export function createRenderer(canvas) {
     const p = game.player;
     const level = game.level;
     if (!p || !level) return;
+    // Staged moments get the grand establishing camera; live play keeps
+    // the closer follow camera. (buildLevel calls this with a fake game
+    // that has no phase, so it defaults to the follow camera.)
+    const staged = game.phase === 'staged' || game.phase === 'staged-complete' || game.phase === 'failed';
+    const height = staged ? STAGE_HEIGHT : CAM_HEIGHT;
+    const lookAhead = staged ? STAGE_LOOK_AHEAD : LOOK_AHEAD;
+    const lookHeight = staged ? STAGE_LOOK_HEIGHT : LOOK_HEIGHT;
+    const fov = staged ? STAGE_FOV : CAM_FOV;
+    if (camera.fov !== fov) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
     // The camera stays inside the room (the 6-high perimeter walls would
     // block the view from outside), a few steps south of the thief.
     desiredPos.set(
       clamp(p.x, 3, level.w - 3),
-      CAM_HEIGHT,
+      height,
       clamp(p.y + CAM_BACK, 2, level.h - 1.2),
     );
     desiredLook.set(
       clamp(p.x, 1.5, level.w - 1.5),
-      LOOK_HEIGHT,
-      clamp(p.y - LOOK_AHEAD, 0.5, level.h - 0.5),
+      lookHeight,
+      clamp(p.y - lookAhead, 0.5, level.h - 0.5),
     );
     if (force || camera.position.distanceTo(desiredPos) > 4) {
       camera.position.copy(desiredPos);
@@ -648,8 +695,8 @@ export function createRenderer(canvas) {
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(level.w, level.h),
       new THREE.MeshPhysicalMaterial({
-        map: floorTex, roughness: 0.32, metalness: 0.08,
-        clearcoat: 0.6, clearcoatRoughness: 0.3,
+        map: floorTex, roughness: 0.2, metalness: 0.05,
+        clearcoat: 0.95, clearcoatRoughness: 0.16,
       }),
     );
     floor.rotation.x = -Math.PI / 2;
@@ -876,7 +923,11 @@ export function createRenderer(canvas) {
     lootRing.position.y = 0.03;
     lootGroup.add(lootRing);
     const lootLabel = textSprite(level.loot.label, { size: 40, color: '#ffd97a', w: 640, h: 96 });
-    lootLabel.position.y = 2.4;
+    // Smaller and shifted toward the room's centre: the loot sits near
+    // the east wall, and at the default scale the label ran under the
+    // right HUD panel in the cover shot.
+    lootLabel.scale.set(2.4, 2.4 * (96 / 640), 1);
+    lootLabel.position.set(-1.0, 2.4, 0);
     lootGroup.add(lootLabel);
     levelGroup.add(lootGroup);
     dynamic.loot = { group: lootGroup, mesh: lootMesh, light: lootLight, ring: lootRing, label: lootLabel };
