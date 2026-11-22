@@ -281,24 +281,14 @@ window.addEventListener('keyup', (e) => {
 canvas.addEventListener('click', (e) => {
   audio.unlock();
   if (game.phase !== 'playing') return;
-  const w = screenToWorld(e.clientX, e.clientY);
+  const w = renderer.screenToWorld(e.clientX, e.clientY);
   throwCoin(game, w.x, w.y);
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  const w = screenToWorld(e.clientX, e.clientY);
+  const w = renderer.screenToWorld(e.clientX, e.clientY);
   game.mouseWorld = w;
 });
-
-function screenToWorld(clientX, clientY) {
-  const rect = canvas.getBoundingClientRect();
-  const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
-  const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
-  const cam = renderer.camera;
-  const wx = cam.position.x + ndcX * (cam.right - cam.left) / 2;
-  const wz = cam.position.z - ndcY * (cam.top - cam.bottom) / 2;
-  return { x: wx, y: wz };
-}
 
 // --- Buttons -------------------------------------------------------------
 document.getElementById('btn-start').addEventListener('click', () => { audio.unlock(); startJob(0); });
@@ -409,7 +399,7 @@ requestAnimationFrame(frame);
 
 window.addEventListener('resize', () => renderer.resize(game.level));
 
-window.__heist = { game, startJob, input, screenToWorld, JOBS };
+window.__heist = { game, startJob, input, screenToWorld: renderer.screenToWorld, JOBS };
 game.step = update;
 
 if (SELFTEST) {

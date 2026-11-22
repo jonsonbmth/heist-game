@@ -1,8 +1,11 @@
-// render.js — the Three.js scene, top-down through an orthographic camera.
-// Dark slate floors, warm amber lamplight pools, translucent vision cones,
-// and stylised (never boxy) figures built from cylinders, spheres and cones
-// with readable silhouettes and facing wedges — the img2threejs approach:
-// authored procedural forms, quality-gated by a screenshot review.
+// render.js — the Three.js scene, seen through an oblique perspective
+// camera (a dollhouse view from the south, ~52 degrees from vertical):
+// wall faces, crates and figures read as solid 3D forms with real height,
+// while the whole room — thief, cones, cameras, loot, exit — stays in one
+// frame. Dark slate floors, warm amber lamplight pools, translucent vision
+// cones, and stylised (never boxy) figures built from cylinders, spheres
+// and cones with readable silhouettes and facing wedges — the img2threejs
+// approach: authored procedural forms, quality-gated by a screenshot review.
 // No addons: the vendored three.min.js is the core build only, so bloom and
 // vignette come from additive glow sprites and a CSS vignette overlay.
 
@@ -61,9 +64,10 @@ function glowTexture() {
 function smokeTexture() {
   return canvasTexture(256, 256, (g) => {
     const grad = g.createRadialGradient(128, 128, 10, 128, 128, 128);
-    grad.addColorStop(0, 'rgba(200, 205, 215, 0.55)');
-    grad.addColorStop(0.6, 'rgba(180, 185, 200, 0.32)');
-    grad.addColorStop(1, 'rgba(170, 175, 195, 0)');
+    grad.addColorStop(0, 'rgba(228, 232, 242, 0.92)');
+    grad.addColorStop(0.45, 'rgba(214, 219, 232, 0.62)');
+    grad.addColorStop(0.75, 'rgba(200, 205, 222, 0.28)');
+    grad.addColorStop(1, 'rgba(190, 195, 214, 0)');
     g.fillStyle = grad;
     g.fillRect(0, 0, 256, 256);
   });
@@ -106,21 +110,32 @@ export function createRenderer(canvas) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x141c31);
 
-  const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 120);
-  camera.up.set(0, 0, -1);
-  camera.position.set(0, 50, 0);
+  // Oblique perspective camera: the viewer stands south of the room and
+  // looks north-down at ~52 degrees from vertical, so wall faces and
+  // figures show their height instead of only their footprints. North
+  // stays up-screen, matching the flat view's orientation.
+  const CAM_TILT = THREE.MathUtils.degToRad(52);
+  const CAM_FOV = 38;
+  const WALL_H = 1.5;
+  const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.1, 200);
+  camera.position.set(0, 30, 30);
   camera.lookAt(0, 0, 0);
 
   // Lighting: a bright cool wash (readable at a glance), a soft key light
-  // for shadows, and warm lamps. The room stays amber-stealth in mood but
-  // nothing hides in murk — every tile, guard and cone reads clearly.
+  // for shadows, a warm fill from the camera side so the wall faces the
+  // viewer sees are never murky, and warm lamps. The room stays
+  // amber-stealth in mood but nothing hides in murk — every tile, guard
+  // and cone reads clearly.
   scene.add(new THREE.HemisphereLight(0x5a6f9e, 0x1a2233, 1.9));
   const key = new THREE.DirectionalLight(0xbfd0ff, 1.1);
   key.position.set(-14, 26, -10);
   key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.mapSize.set(2048, 2048);
   key.shadow.bias = -0.0004;
   scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffe0b3, 0.55);
+  fill.position.set(14, 18, 20);
+  scene.add(fill);
   scene.add(new THREE.AmbientLight(0x3a4a6a, 1.35));
 
   const glowTex = glowTexture();
@@ -132,25 +147,33 @@ export function createRenderer(canvas) {
   function fitCamera(level) {
     const rect = canvas.getBoundingClientRect();
     const aspect = rect.width / Math.max(1, rect.height);
-    const pad = 1.6;
-    const vw = level.w + pad * 2;
-    const vh = level.h + pad * 2;
-    let halfW = vw / 2, halfH = vh / 2;
-    if (halfW / halfH > aspect) halfH = halfW / aspect;
-    else halfW = halfH * aspect;
-    camera.left = -halfW; camera.right = halfW;
-    camera.top = halfH; camera.bottom = -halfH;
-    camera.position.set(level.w / 2, 50, level.h / 2);
-    camera.lookAt(level.w / 2, 0, level.h / 2);
+    const cx = level.w / 2, cz = level.h / 2;
+    const pad = 1.2;
+    const tanV = Math.tan(THREE.MathUtils.degToRad(CAM_FOV / 2));
+    // Horizontal fit: the room's width must fit the frame.
+    const dH = (level.w / 2 + pad) / (tanV * aspect);
+    // Vertical fit: the foreshortened depth (depth * cos tilt, plus wall
+    // height * sin tilt) must fit, measured from the near edge, which sits
+    // closer to the camera than the target by (depth/2) * sin tilt.
+    const halfD = level.h / 2;
+    const topNeed = halfD * Math.cos(CAM_TILT) + WALL_H * Math.sin(CAM_TILT) + pad;
+    const dV = halfD * Math.sin(CAM_TILT) + topNeed / tanV;
+    const dist = Math.max(dH, dV) * 1.03;
+    camera.aspect = aspect;
+    camera.position.set(cx, Math.cos(CAM_TILT) * dist, cz + Math.sin(CAM_TILT) * dist);
+    camera.lookAt(cx, 0, cz);
     camera.updateProjectionMatrix();
     key.shadow.camera.left = -level.w / 2 - 4;
     key.shadow.camera.right = level.w / 2 + 4;
     key.shadow.camera.top = level.h / 2 + 4;
     key.shadow.camera.bottom = -level.h / 2 - 4;
-    key.shadow.camera.far = 80;
-    key.target.position.set(level.w / 2, 0, level.h / 2);
+    key.shadow.camera.far = 100;
+    key.target.position.set(cx, 0, cz);
     scene.add(key.target);
-    key.position.set(level.w / 2 - 14, 26, level.h / 2 - 10);
+    key.position.set(cx - 14, 26, cz - 10);
+    fill.position.set(cx + 14, 18, cz + 20);
+    fill.target.position.set(cx, 0, cz);
+    scene.add(fill.target);
     renderer.setSize(rect.width, rect.height, false);
   }
 
@@ -206,6 +229,26 @@ export function createRenderer(canvas) {
     floor.receiveShadow = true;
     levelGroup.add(floor);
 
+    // Diorama base: a wide dark ground plane under and around the room,
+    // so the oblique view frames the room as a tabletop model instead of
+    // floating it on void. A soft radial falloff spotlights the table.
+    const baseTex = canvasTexture(512, 512, (g, w, h) => {
+      const grad = g.createRadialGradient(w / 2, h / 2, 40, w / 2, h / 2, w / 2);
+      grad.addColorStop(0, '#2c3a5c');
+      grad.addColorStop(0.5, '#1f2a44');
+      grad.addColorStop(1, '#12182a');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, w, h);
+    });
+    const base = new THREE.Mesh(
+      new THREE.PlaneGeometry(110, 90),
+      new THREE.MeshStandardMaterial({ map: baseTex, roughness: 1, metalness: 0 }),
+    );
+    base.rotation.x = -Math.PI / 2;
+    base.position.set(level.w / 2, -0.02, level.h / 2);
+    base.receiveShadow = true;
+    levelGroup.add(base);
+
     // Carpets: thin coloured planes laid on the floor.
     for (const c of level.carpets || []) {
       const rug = new THREE.Mesh(
@@ -221,36 +264,36 @@ export function createRenderer(canvas) {
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x2a3550, roughness: 0.85 });
     const wallTopMat = new THREE.MeshStandardMaterial({ color: 0x3a4a6e, roughness: 0.8 });
     for (const b of level.walls) {
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(b.w, 1.0, b.h), wallMat);
-      wall.position.set(b.x + b.w / 2, 0.5, b.y + b.h / 2);
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(b.w, WALL_H, b.h), wallMat);
+      wall.position.set(b.x + b.w / 2, WALL_H / 2, b.y + b.h / 2);
       wall.castShadow = true; wall.receiveShadow = true;
       levelGroup.add(wall);
       const cap = new THREE.Mesh(new THREE.BoxGeometry(b.w + 0.06, 0.06, b.h + 0.06), wallTopMat);
-      cap.position.set(b.x + b.w / 2, 1.02, b.y + b.h / 2);
+      cap.position.set(b.x + b.w / 2, WALL_H + 0.02, b.y + b.h / 2);
       levelGroup.add(cap);
     }
 
     const crateMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 0.9 });
     const crateTopMat = new THREE.MeshStandardMaterial({ color: 0x8a6238, roughness: 0.85 });
     for (const b of level.crates) {
-      const crate = new THREE.Mesh(new THREE.BoxGeometry(b.w, 0.7, b.h), crateMat);
-      crate.position.set(b.x + b.w / 2, 0.35, b.y + b.h / 2);
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(b.w, 0.9, b.h), crateMat);
+      crate.position.set(b.x + b.w / 2, 0.45, b.y + b.h / 2);
       crate.castShadow = true; crate.receiveShadow = true;
       levelGroup.add(crate);
       const top = new THREE.Mesh(new THREE.BoxGeometry(b.w - 0.15, 0.06, b.h - 0.15), crateTopMat);
-      top.position.set(b.x + b.w / 2, 0.73, b.y + b.h / 2);
+      top.position.set(b.x + b.w / 2, 0.93, b.y + b.h / 2);
       levelGroup.add(top);
     }
 
     const coverMat = new THREE.MeshStandardMaterial({ color: 0x2e4a3a, roughness: 1 });
     const coverTopMat = new THREE.MeshStandardMaterial({ color: 0x3d6248, roughness: 1 });
     for (const b of level.cover) {
-      const cov = new THREE.Mesh(new THREE.BoxGeometry(b.w, 0.34, b.h), coverMat);
-      cov.position.set(b.x + b.w / 2, 0.17, b.y + b.h / 2);
+      const cov = new THREE.Mesh(new THREE.BoxGeometry(b.w, 0.42, b.h), coverMat);
+      cov.position.set(b.x + b.w / 2, 0.21, b.y + b.h / 2);
       cov.castShadow = true; cov.receiveShadow = true;
       levelGroup.add(cov);
       const top = new THREE.Mesh(new THREE.BoxGeometry(b.w - 0.1, 0.05, b.h - 0.1), coverTopMat);
-      top.position.set(b.x + b.w / 2, 0.36, b.y + b.h / 2);
+      top.position.set(b.x + b.w / 2, 0.44, b.y + b.h / 2);
       levelGroup.add(top);
     }
 
@@ -274,10 +317,11 @@ export function createRenderer(canvas) {
       }
     }
 
-    // Room labels, floating just above the floor.
+    // Room labels, floating above the floor (high enough to clear the
+    // sight line over the near wall from the oblique camera).
     for (const lb of level.labels || []) {
       const spr = textSprite(lb.text, { size: 40 });
-      spr.position.set(lb.x, 0.35, lb.y);
+      spr.position.set(lb.x, 0.6, lb.y);
       levelGroup.add(spr);
     }
 
@@ -320,17 +364,17 @@ export function createRenderer(canvas) {
     const lootGroup = new THREE.Group();
     lootGroup.position.set(level.loot.x, 0, level.loot.y);
     const lootMesh = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.34),
+      new THREE.OctahedronGeometry(0.38),
       new THREE.MeshStandardMaterial({
         color: 0xffc93c, emissive: 0xa66f00, emissiveIntensity: 0.9,
         roughness: 0.25, metalness: 0.85,
       }),
     );
-    lootMesh.position.y = 0.55;
+    lootMesh.position.y = 0.7;
     lootMesh.castShadow = true;
     lootGroup.add(lootMesh);
     const lootLight = new THREE.PointLight(0xffc93c, 10, 5, 1.8);
-    lootLight.position.y = 0.8;
+    lootLight.position.y = 1.0;
     lootGroup.add(lootLight);
     const lootRing = new THREE.Mesh(
       new THREE.RingGeometry(0.5, 0.58, 40),
@@ -340,7 +384,7 @@ export function createRenderer(canvas) {
     lootRing.position.y = 0.03;
     lootGroup.add(lootRing);
     const lootLabel = textSprite(level.loot.label, { size: 40, color: '#ffd97a', w: 640, h: 96 });
-    lootLabel.position.y = 1.25;
+    lootLabel.position.y = 1.45;
     lootGroup.add(lootLabel);
     levelGroup.add(lootGroup);
     dynamic.loot = { group: lootGroup, mesh: lootMesh, light: lootLight, ring: lootRing, label: lootLabel };
@@ -356,7 +400,7 @@ export function createRenderer(canvas) {
           roughness: 0.3, metalness: 0.8,
         }),
       );
-      rm.position.y = 0.4;
+      rm.position.y = 0.5;
       rm.castShadow = true;
       rg.add(rm);
       levelGroup.add(rg);
@@ -381,54 +425,64 @@ export function createRenderer(canvas) {
     exitRing.position.y = 0.03;
     exitGroup.add(exitRing);
     const exitLabel = textSprite('EXIT', { size: 52, color: '#5cf59a', w: 320, h: 96 });
-    exitLabel.position.y = 1.0;
+    exitLabel.position.y = 1.25;
     exitGroup.add(exitLabel);
     levelGroup.add(exitGroup);
     dynamic.exit = { group: exitGroup, pad, ring: exitRing, label: exitLabel };
 
     // Guards: stylised wardens — navy cloak, wide-brim hat, facing wedge,
     // a state ring underfoot and a translucent vision cone on the floor.
+    // The figures stand ~1.25 units tall so their bodies read from the
+    // oblique camera; the cone itself stays flat on the floor at its
+    // true range.
     dynamic.guards = [];
     for (const g of level.guards) {
       const group = new THREE.Group();
       const cloak = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.22, 0.35, 0.55, 14),
+        new THREE.CylinderGeometry(0.26, 0.42, 0.9, 14),
         new THREE.MeshStandardMaterial({ color: 0x46608f, roughness: 0.85 }),
       );
-      cloak.position.y = 0.28;
+      cloak.position.y = 0.45;
       cloak.castShadow = true;
       group.add(cloak);
       const trim = new THREE.Mesh(
-        new THREE.TorusGeometry(0.3, 0.028, 8, 20),
+        new THREE.TorusGeometry(0.37, 0.03, 8, 20),
         new THREE.MeshStandardMaterial({ color: 0xc9973f, roughness: 0.5, metalness: 0.6 }),
       );
       trim.rotation.x = Math.PI / 2;
-      trim.position.y = 0.06;
+      trim.position.y = 0.08;
       group.add(trim);
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.15, 12, 10),
+        new THREE.MeshStandardMaterial({ color: 0xd8b48f, roughness: 0.8 }),
+      );
+      head.position.y = 0.95;
+      head.castShadow = true;
+      group.add(head);
       const brim = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.34, 0.36, 0.05, 16),
+        new THREE.CylinderGeometry(0.4, 0.42, 0.06, 16),
         new THREE.MeshStandardMaterial({ color: 0x2a3550, roughness: 0.8 }),
       );
-      brim.position.y = 0.6;
+      brim.position.y = 1.06;
       brim.castShadow = true;
       group.add(brim);
       const dome = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.SphereGeometry(0.18, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
         new THREE.MeshStandardMaterial({ color: 0x35446a, roughness: 0.8 }),
       );
-      dome.position.y = 0.62;
+      dome.position.y = 1.09;
       group.add(dome);
       // Facing wedge: a small gold chevron ahead of the warden.
       const wedge = new THREE.Mesh(
-        new THREE.ConeGeometry(0.11, 0.34, 4),
+        new THREE.ConeGeometry(0.12, 0.38, 4),
         new THREE.MeshStandardMaterial({ color: 0xffc93c, emissive: 0x7a5a00, emissiveIntensity: 0.6 }),
       );
       wedge.rotation.x = Math.PI / 2;
       wedge.rotation.y = Math.PI / 4;
-      wedge.position.set(0, 0.45, 0.34);
+      wedge.position.set(0, 0.68, 0.44);
       group.add(wedge);
       const ring = new THREE.Mesh(
-        new THREE.RingGeometry(0.38, 0.45, 32),
+        new THREE.RingGeometry(0.45, 0.53, 32),
         new THREE.MeshBasicMaterial({ color: 0x8fa3c8, transparent: true, opacity: 0.6, side: THREE.DoubleSide }),
       );
       ring.rotation.x = -Math.PI / 2;
@@ -436,7 +490,7 @@ export function createRenderer(canvas) {
       group.add(ring);
       const mark = textSprite('?', { size: 72, color: '#ffd24a', w: 128, h: 128 });
       mark.scale.set(0.9, 0.9, 1);
-      mark.position.y = 1.25;
+      mark.position.y = 1.55;
       mark.visible = false;
       group.add(mark);
       // Vision cone.
@@ -458,11 +512,18 @@ export function createRenderer(canvas) {
       dynamic.guards.push({ group, cone, coneMat, rim, rimMat, ring, mark });
     }
 
-    // Cameras: a wall box, a lens, and a sweeping teal arc.
+    // Cameras: a mount pole, a wall box, a lens, and a sweeping teal arc.
     dynamic.cameras = [];
     for (const c of level.cameras) {
       const group = new THREE.Group();
       group.position.set(c.x, 0, c.y);
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.08, 0.9, 8),
+        new THREE.MeshStandardMaterial({ color: 0x232c40, roughness: 0.6, metalness: 0.5 }),
+      );
+      pole.position.y = 0.45;
+      pole.castShadow = true;
+      group.add(pole);
       const box = new THREE.Mesh(
         new THREE.BoxGeometry(0.34, 0.34, 0.34),
         new THREE.MeshStandardMaterial({ color: 0x3a4a5e, roughness: 0.6, metalness: 0.5 }),
@@ -511,38 +572,39 @@ export function createRenderer(canvas) {
     }
 
     // The thief: deep-teal cloak, gold trim, hood, gold facing wedge.
+    // Stands ~1.35 units tall so the player reads as a figure, not a dot.
     const thief = new THREE.Group();
     const tcloak = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.2, 0.32, 0.55, 14),
+      new THREE.CylinderGeometry(0.24, 0.38, 0.85, 14),
       new THREE.MeshStandardMaterial({ color: 0x1d7a64, roughness: 0.85 }),
     );
-    tcloak.position.y = 0.28;
+    tcloak.position.y = 0.43;
     tcloak.castShadow = true;
     thief.add(tcloak);
     const ttrim = new THREE.Mesh(
-      new THREE.TorusGeometry(0.28, 0.025, 8, 20),
+      new THREE.TorusGeometry(0.33, 0.028, 8, 20),
       new THREE.MeshStandardMaterial({ color: 0xd8a24a, roughness: 0.45, metalness: 0.7 }),
     );
     ttrim.rotation.x = Math.PI / 2;
-    ttrim.position.y = 0.06;
+    ttrim.position.y = 0.08;
     thief.add(ttrim);
     const hood = new THREE.Mesh(
-      new THREE.ConeGeometry(0.19, 0.42, 12),
+      new THREE.ConeGeometry(0.24, 0.55, 12),
       new THREE.MeshStandardMaterial({ color: 0x27a37e, roughness: 0.9 }),
     );
-    hood.position.y = 0.72;
+    hood.position.y = 1.08;
     hood.castShadow = true;
     thief.add(hood);
     const twedge = new THREE.Mesh(
-      new THREE.ConeGeometry(0.1, 0.3, 4),
+      new THREE.ConeGeometry(0.12, 0.36, 4),
       new THREE.MeshStandardMaterial({ color: 0xffd24a, emissive: 0x8a6d1f, emissiveIntensity: 0.7 }),
     );
     twedge.rotation.x = Math.PI / 2;
     twedge.rotation.y = Math.PI / 4;
-    twedge.position.set(0, 0.42, 0.32);
+    twedge.position.set(0, 0.6, 0.4);
     thief.add(twedge);
     const tshadow = new THREE.Mesh(
-      new THREE.CircleGeometry(0.42, 24),
+      new THREE.CircleGeometry(0.48, 24),
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false }),
     );
     tshadow.rotation.x = -Math.PI / 2;
@@ -550,7 +612,7 @@ export function createRenderer(canvas) {
     thief.add(tshadow);
     // A gold ring under the thief, so the player is always findable.
     const tring = new THREE.Mesh(
-      new THREE.RingGeometry(0.38, 0.46, 32),
+      new THREE.RingGeometry(0.44, 0.52, 32),
       new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.75, side: THREE.DoubleSide }),
     );
     tring.rotation.x = -Math.PI / 2;
@@ -572,14 +634,14 @@ export function createRenderer(canvas) {
       levelGroup.add(rm);
       dynamic.rings.push(rm);
     }
+    // Smoke: billboard puffs that face the camera, so the cloud reads as
+    // a volume from the oblique view instead of a flat floor decal.
     dynamic.smokes = [];
     for (let i = 0; i < 3; i++) {
-      const sm = new THREE.Mesh(
-        new THREE.PlaneGeometry(1, 1),
-        new THREE.MeshBasicMaterial({ map: smokeTex, transparent: true, opacity: 0, depthWrite: false }),
-      );
-      sm.rotation.x = -Math.PI / 2;
-      sm.position.y = 0.06;
+      const sm = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: smokeTex, transparent: true, opacity: 0, depthWrite: false,
+      }));
+      sm.position.y = 0.7;
       sm.visible = false;
       levelGroup.add(sm);
       dynamic.smokes.push(sm);
@@ -634,7 +696,7 @@ export function createRenderer(canvas) {
           });
           d.mark.material.needsUpdate = true;
         }
-        d.mark.position.y = 1.25 + Math.sin(time * 5) * 0.05;
+        d.mark.position.y = 1.55 + Math.sin(time * 5) * 0.05;
       }
     });
 
@@ -665,7 +727,7 @@ export function createRenderer(canvas) {
     loot.group.visible = !game.level.loot.taken;
     if (loot.group.visible) {
       loot.mesh.rotation.y = time * 1.4;
-      loot.mesh.position.y = 0.55 + Math.sin(time * 2.2) * 0.07;
+      loot.mesh.position.y = 0.7 + Math.sin(time * 2.2) * 0.07;
       loot.ring.scale.setScalar(1 + Math.sin(time * 3) * 0.12);
       loot.light.intensity = 9 + Math.sin(time * 2.2) * 2;
     }
@@ -673,7 +735,7 @@ export function createRenderer(canvas) {
       r.group.visible = !r.def.taken;
       if (r.group.visible) {
         r.mesh.rotation.y = time * 1.8;
-        r.mesh.position.y = 0.4 + Math.sin(time * 2.6 + r.def.x) * 0.05;
+        r.mesh.position.y = 0.5 + Math.sin(time * 2.6 + r.def.x) * 0.05;
       }
     });
 
@@ -702,10 +764,10 @@ export function createRenderer(canvas) {
       const k = s.t / s.dur;
       m.visible = k < 1;
       if (m.visible) {
-        m.position.set(s.x, 0.06, s.y);
+        m.position.set(s.x, 0.7, s.y);
         const grow = Math.min(1, s.t * 3);
-        m.scale.set(s.r * 2 * grow, s.r * 2 * grow, 1);
-        m.material.opacity = k < 0.8 ? 0.85 : 0.85 * (1 - (k - 0.8) / 0.2);
+        m.scale.set(s.r * 1.9 * grow, s.r * 1.4 * grow, 1);
+        m.material.opacity = k < 0.8 ? 1 : 1 - (k - 0.8) / 0.2;
       }
     });
     game.gadgets.coins.forEach((c, i) => {
@@ -728,5 +790,23 @@ export function createRenderer(canvas) {
     fitCamera(level);
   }
 
-  return { buildLevel, sync, render, resize, renderer, scene, camera };
+  // Screen point -> floor point: a ray through the perspective camera
+  // onto the y=0 plane. Used for pebble throws (click to distract).
+  const raycaster = new THREE.Raycaster();
+  const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const ndc = new THREE.Vector2();
+  const hitPoint = new THREE.Vector3();
+  function screenToWorld(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    ndc.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -(((clientY - rect.top) / rect.height) * 2 - 1),
+    );
+    raycaster.setFromCamera(ndc, camera);
+    const p = raycaster.ray.intersectPlane(floorPlane, hitPoint);
+    if (!p) return { x: 0, y: 0 };
+    return { x: p.x, y: p.z };
+  }
+
+  return { buildLevel, sync, render, resize, screenToWorld, renderer, scene, camera };
 }
