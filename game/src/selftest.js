@@ -244,7 +244,12 @@ async function testWin(game, input) {
   await grabHere(game, input, 1.2); // the grab channel is 0.8s; no need to linger in the light
   if (!game.level.loot.taken) return 'SELFTEST-WIN-FAIL loot-not-taken';
   const route3 = [
-    [25, 7.2], [24, 10], [18, 12], [10, 14], [2.5, 15.5], // the green exit
+    [25, 7.2], [24, 10], [18, 12], [10, 15], [2.5, 15.5], // the green exit
+    // (10, 15), not (10, 14): the old staging point sits on the counting
+    // tables' south edge (crate x 9..11, y 12..14) and the thief's 0.32
+    // collision radius holds it at y 14.32, 0.377 from the target — outside
+    // the 0.35 arrival radius, so the leg timed out forever. (10, 15) is
+    // clear and the west run to the exit is unchanged.
   ];
   for (const [x, y] of route3) {
     const r = await walkTo(game, input, x, y, 60);

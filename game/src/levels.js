@@ -140,11 +140,18 @@ const JOB1 = {
   guards: [
     {
       name: 'W-1 BRAM', x: 8, y: 9, angle: 0, pause: 1.4, speed: 2.1,
-      waypoints: [[8, 9], [16, 8], [16, 13], [8, 13]],
+      // East waypoint pulled 2 tiles north of the counting tables: the
+      // warden no longer pauses on the thief's route into the vault.
+      waypoints: [[8, 9], [16, 8], [16, 11], [8, 13]],
     },
     {
       name: 'W-2 ODETTE', x: 18, y: 3, angle: Math.PI / 2, pause: 1.8, speed: 2.0,
-      waypoints: [[18, 3], [18, 12], [24, 10], [24, 8]],
+      // Door waypoints sit 2 tiles west of the vault door (x 24): the
+      // warden still covers the east hall, but no longer pauses on the
+      // door itself, so the thief gets a fair timing window to slip in.
+      // The east loop runs along the south wall (y 15) instead of the
+      // exit corridor (y 10-12), so the way out stays open too.
+      waypoints: [[18, 3], [18, 12], [23, 15], [20, 15]],
     },
   ],
   cameras: [
