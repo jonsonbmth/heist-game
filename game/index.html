@@ -118,7 +118,10 @@
   #hud-bottom .sep { color: #33405e; margin: 0 6px; }
 
   /* --- Overlays --- */
-  .overlay { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 12, 0.72); }
+  /* The right panel is 300px wide, so the overlay's flex centring is
+     padded by the same amount: the card centres on the stage, never
+     overlapping the panel. */
+  .overlay { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 12, 0.72); padding-right: 300px; }
   .overlay.hidden { display: none; }
   .card { width: 620px; max-width: 92%; background: #0d1222; border: 1px solid var(--amber-dim); border-radius: 8px; padding: 30px 36px; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); }
   .card h1 { font-family: Georgia, serif; color: var(--amber); letter-spacing: 3px; margin: 0 0 6px; font-size: 34px; }

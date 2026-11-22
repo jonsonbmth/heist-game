@@ -310,16 +310,20 @@ function stageShot(kind) {
   if (kind === 'cover') {
     startJob(0);
     const p = game.player;
-    p.x = 13.5; p.y = 10.5; p.angle = -0.6;
+    // Staged near the vault approach so the low camera frames the thief,
+    // both wardens and the gold vault door in one shot. The thief stands
+    // on open floor south of the counting tables (the tables span
+    // x 15..19, y 9..11 — staging inside them hides the thief).
+    p.x = 18; p.y = 12.8; p.angle = -0.6;
     p.stance = 'sneak';
     // One warden suspicious, turning toward the thief; one on patrol.
     game.guards[0].state = 'suspicious';
     game.guards[0].suspicion = 0.72;
-    game.guards[0].x = 15.5; game.guards[0].y = 8.2;
-    game.guards[0].angle = Math.atan2(p.y - 8.2, p.x - 15.5);
+    game.guards[0].x = 20.5; game.guards[0].y = 8.2;
+    game.guards[0].angle = Math.atan2(p.y - 8.2, p.x - 20.5);
     game.guards[0].investigateX = p.x; game.guards[0].investigateY = p.y;
-    game.guards[1].x = 21; game.guards[1].y = 7.5;
-    game.guards[1].angle = Math.PI / 2;
+    game.guards[1].x = 16.5; game.guards[1].y = 7.2;
+    game.guards[1].angle = 0;
     game.maxSuspicion = 0.72;
     game.alarmLevel = 0.42;
     game.time = 71;
@@ -332,16 +336,21 @@ function stageShot(kind) {
   } else if (kind === 'smoke') {
     startJob(1);
     const p = game.player;
-    p.x = 17.5; p.y = 8.5; p.angle = 0.4;
+    // Staged east of the strong-room divider so the low camera (which
+    // sits south of the thief) does not hug the divider wall.
+    p.x = 19.5; p.y = 8.5; p.angle = 0.4;
     p.stance = 'sneak';
     p.smoke = 1;
-    game.gadgets.smokes.push({ x: 17.5, y: 8.5, t: 1.2, dur: 6, r: 2.6 });
+    game.gadgets.smokes.push({ x: 19.5, y: 8.5, t: 1.2, dur: 6, r: 2.6 });
     p.smokeCovered = 2;
-    game.gadgets.coins.push({ x: p.x, y: p.y, tx: 21, ty: 6, t: 0.2, dur: 0.45, landed: false });
+    game.gadgets.coins.push({ x: p.x, y: p.y, tx: 23, ty: 6, t: 0.2, dur: 0.45, landed: false });
     game.guards[1].state = 'suspicious';
     game.guards[1].suspicion = 0.6;
-    game.guards[1].x = 20; game.guards[1].y = 6;
-    game.guards[1].angle = Math.atan2(8.5 - 6, 17.5 - 20);
+    // South of the vault wall, at the smoke's edge, facing the thief —
+    // standing behind the wall would hide her body and leave a floating "?".
+    // Kept clear of the flank column at (21.8, 7.9) so her "?" mark reads.
+    game.guards[1].x = 22.6; game.guards[1].y = 8.6;
+    game.guards[1].angle = Math.atan2(8.5 - 8.6, 19.5 - 22.6);
     game.maxSuspicion = 0.6;
     game.alarmLevel = 0.35;
     game.time = 134;
