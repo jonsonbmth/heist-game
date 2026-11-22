@@ -100,26 +100,28 @@ export function createRenderer(canvas) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.35;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0b1020);
+  scene.background = new THREE.Color(0x141c31);
 
   const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 120);
   camera.up.set(0, 0, -1);
   camera.position.set(0, 50, 0);
   camera.lookAt(0, 0, 0);
 
-  // Lighting: a dim cool wash, a soft key light for shadows, and warm lamps.
-  scene.add(new THREE.HemisphereLight(0x3d4f78, 0x0d101c, 1.25));
-  const key = new THREE.DirectionalLight(0xbfd0ff, 0.7);
+  // Lighting: a bright cool wash (readable at a glance), a soft key light
+  // for shadows, and warm lamps. The room stays amber-stealth in mood but
+  // nothing hides in murk — every tile, guard and cone reads clearly.
+  scene.add(new THREE.HemisphereLight(0x5a6f9e, 0x1a2233, 1.9));
+  const key = new THREE.DirectionalLight(0xbfd0ff, 1.1);
   key.position.set(-14, 26, -10);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   key.shadow.bias = -0.0004;
   scene.add(key);
-  scene.add(new THREE.AmbientLight(0x232c44, 0.95));
+  scene.add(new THREE.AmbientLight(0x3a4a6a, 1.35));
 
   const glowTex = glowTexture();
   const smokeTex = smokeTexture();
@@ -154,7 +156,7 @@ export function createRenderer(canvas) {
 
   function floorTexture(level) {
     return canvasTexture(1024, 1024, (g, w, h) => {
-      g.fillStyle = '#161c2c';
+      g.fillStyle = '#232c44';
       g.fillRect(0, 0, w, h);
       const tx = w / level.w, ty = h / level.h;
       // Checker of slate tiles with a little per-tile value jitter (seeded).
@@ -163,8 +165,8 @@ export function createRenderer(canvas) {
         for (let x = 0; x < level.w; x++) {
           const v = rnd();
           g.fillStyle = (x + y) % 2 === 0
-            ? `rgb(${22 + v * 6}, ${28 + v * 6}, ${44 + v * 8})`
-            : `rgb(${18 + v * 5}, ${23 + v * 5}, ${36 + v * 7})`;
+            ? `rgb(${38 + v * 8}, ${46 + v * 8}, ${68 + v * 10})`
+            : `rgb(${32 + v * 7}, ${40 + v * 7}, ${60 + v * 9})`;
           g.fillRect(x * tx, y * ty, tx + 1, ty + 1);
           g.strokeStyle = 'rgba(8, 10, 18, 0.55)';
           g.strokeRect(x * tx + 0.5, y * ty + 0.5, tx, ty);

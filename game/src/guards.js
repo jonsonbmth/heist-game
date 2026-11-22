@@ -5,14 +5,16 @@
 // (a sprint, a thrown pebble) pulls a warden to investigate. Catching the
 // thief costs the thief a strike — after a short, visible warning.
 
-import { boxContains, dist, resolveCircle, segmentBlocked, sightBlockersOf } from './levels.js';
+import { boxContains, dist, findPath, resolveCircle, segmentBlocked, sightBlockersOf } from './levels.js';
 
 export const CONE_RANGE = 5.6;
 export const CONE_HALF_ANGLE = 0.56; // ~32 degrees each side
 export const CAMERA_RANGE = 6.2;
 export const CAMERA_HALF_ANGLE = 0.44;
 export const CATCH_DISTANCE = 0.62;
-export const SUSPICION_FILL = 1.15; // per second while the thief is seen
+export const SUSPICION_FILL = 0.8; // per second while the thief is seen —
+// a full meter takes 1.25 s of continuous sight, so a thief who slips
+// out of a cone in time is not instantly hunted: a fair caught moment.
 export const SUSPICION_DECAY = 0.22; // per second while unseen
 
 export function angleDiff(a, b) {
@@ -54,7 +56,9 @@ export function canSeeThief(game, sx, sy, angle, range, halfAngle) {
   const d = dist(sx, sy, p.x, p.y);
   const vis = thiefVisibility(game);
   if (d > range * vis) return false;
-  if (d > 2.6 && Math.abs(angleDiff(angleTo(sx, sy, p.x, p.y), angle)) > halfAngle) return false;
+  // Very close up, a warden senses the thief even outside the cone — but
+  // only at arm's length (1.5), so sneaking up behind one stays fair.
+  if (d > 1.5 && Math.abs(angleDiff(angleTo(sx, sy, p.x, p.y), angle)) > halfAngle) return false;
   const blockers = sightBlockersOf(game.level, game.player.stance === 'sneak');
   if (segmentBlocked(sx, sy, p.x, p.y, blockers)) return false;
   return true;
@@ -77,7 +81,32 @@ export function makeGuard(def) {
     investigateX: 0, investigateY: 0,
     lookT: 0,
     catchWarnT: 0,
+    path: [], pathI: 0, pathKey: '',
+    stuckT: 0, lastX: def.x, lastY: def.y,
   };
+}
+
+// Walk toward (tx,ty) along a path that routes around furniture. The path
+// is (re)computed when the goal or its target moves; the guard follows one
+// path point at a time. Returns true when the guard is on top of the goal.
+// A stuck guard (no progress for 2 s) gets a fresh path from where it is.
+function followPath(game, g, tx, ty, key, speed, dt) {
+  const end = g.path.length ? g.path[g.path.length - 1] : null;
+  if (g.pathKey !== key || !end || dist(end.x, end.y, tx, ty) > 0.6) {
+    const pts = findPath(game.level, g.x, g.y, tx, ty);
+    g.path = pts && pts.length ? pts : [{ x: tx, y: ty }];
+    g.pathI = 0;
+    g.pathKey = key;
+  }
+  if (dist(g.x, g.y, tx, ty) < 0.4) { g.path = []; return true; }
+  const pt = g.path[Math.min(g.pathI, g.path.length - 1)];
+  if (moveTowardGuard(game, g, pt.x, pt.y, speed, dt) && g.pathI < g.path.length - 1) g.pathI++;
+  if (dist(g.x, g.y, g.lastX, g.lastY) > 0.02) { g.stuckT = 0; g.lastX = g.x; g.lastY = g.y; }
+  else {
+    g.stuckT += dt;
+    if (g.stuckT > 2) { g.pathKey = ''; g.stuckT = 0; }
+  }
+  return dist(g.x, g.y, tx, ty) < 0.4;
 }
 
 function moveTowardGuard(game, g, tx, ty, speed, dt) {
@@ -136,21 +165,40 @@ export function updateGuards(game, dt) {
         g.pauseT -= dt;
         g.lookT += dt;
         g.angle += Math.sin(g.lookT * 1.4) * 0.35 * dt; // scan the room
-      } else if (moveTowardGuard(game, g, wp.x, wp.y, g.speed, dt)) {
+      } else if (followPath(game, g, wp.x, wp.y, `patrol:${g.wpIndex}`, g.speed, dt)) {
         g.wpIndex = (g.wpIndex + 1) % g.waypoints.length;
         g.pauseT = g.pause;
         g.lookT = 0;
       }
     } else if (g.state === 'suspicious') {
-      if (moveTowardGuard(game, g, g.investigateX, g.investigateY, g.speed * 1.15, dt)) {
-        g.pauseT = 1.6;
-        g.state = 'patrol';
-        g.wpIndex = nearestWaypoint(g);
-        g.suspicion = Math.max(0, g.suspicion - 0.35);
+      if (g.pauseT > 0) {
+        // Stood at the spot, scanning: if the thief is still visible once
+        // the look is over, keep after them; otherwise give up and patrol.
+        g.pauseT -= dt;
+        g.lookT += dt;
+        g.angle += Math.sin(g.lookT * 1.4) * 0.35 * dt;
+        if (g.pauseT <= 0) {
+          if (seen) { g.investigateX = p.x; g.investigateY = p.y; }
+          else {
+            g.state = 'patrol';
+            g.wpIndex = nearestWaypoint(g);
+            g.suspicion = Math.max(0, g.suspicion - 0.35);
+            g.pathKey = '';
+          }
+        }
+      } else if (followPath(game, g, g.investigateX, g.investigateY, 'suspicious', g.speed * 1.15, dt)) {
+        if (seen) g.pauseT = 0.8;
+        else {
+          g.pauseT = 1.6;
+          g.state = 'patrol';
+          g.wpIndex = nearestWaypoint(g);
+          g.suspicion = Math.max(0, g.suspicion - 0.35);
+          g.pathKey = '';
+        }
       }
     } else if (g.state === 'hunt') {
       if (seen) { g.targetX = p.x; g.targetY = p.y; }
-      const arrived = moveTowardGuard(game, g, g.targetX, g.targetY, g.speed * 1.65, dt);
+      const arrived = followPath(game, g, g.targetX, g.targetY, 'hunt', g.speed * 1.65, dt);
       if (dist(g.x, g.y, p.x, p.y) < CATCH_DISTANCE) {
         game.onCaught(g);
         return;
@@ -158,14 +206,17 @@ export function updateGuards(game, dt) {
       if (arrived && !seen) {
         g.state = 'suspicious';
         g.investigateX = g.targetX; g.investigateY = g.targetY;
+        g.pathKey = '';
       }
       if (g.suspicion <= 0.05 && !seen) {
         g.state = 'return';
+        g.pathKey = '';
       }
     } else if (g.state === 'return') {
-      if (moveTowardGuard(game, g, g.homeX, g.homeY, g.speed, dt)) {
+      if (followPath(game, g, g.homeX, g.homeY, 'return', g.speed, dt)) {
         g.state = 'patrol';
         g.wpIndex = nearestWaypoint(g);
+        g.pathKey = '';
       }
     }
   }

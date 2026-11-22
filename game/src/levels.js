@@ -110,7 +110,7 @@ const JOB1 = {
   ],
   crates: [
     { x: 5, y: 4, w: 3, h: 2 },   // coin chests, west hall
-    { x: 9, y: 12, w: 4, h: 2 },  // counting tables
+    { x: 9, y: 12, w: 2, h: 2 },  // counting tables — leaves the divider gap (x 11..13) open as a second route east
     { x: 15, y: 9, w: 4, h: 2 },
     { x: 23, y: 12, w: 3, h: 2 },
   ],
@@ -140,11 +140,11 @@ const JOB1 = {
   guards: [
     {
       name: 'W-1 BRAM', x: 8, y: 9, angle: 0, pause: 1.4, speed: 2.1,
-      waypoints: [[8, 9], [16, 9], [16, 13], [8, 13]],
+      waypoints: [[8, 9], [16, 8], [16, 13], [8, 13]],
     },
     {
-      name: 'W-2 ODETTE', x: 18, y: 4, angle: Math.PI / 2, pause: 1.8, speed: 2.0,
-      waypoints: [[18, 4], [18, 10], [24, 10], [24, 4]],
+      name: 'W-2 ODETTE', x: 18, y: 3, angle: Math.PI / 2, pause: 1.8, speed: 2.0,
+      waypoints: [[18, 3], [18, 12], [24, 10], [24, 8]],
     },
   ],
   cameras: [
@@ -154,7 +154,7 @@ const JOB1 = {
   loot: { x: 26.5, y: 3.5, value: 500, label: 'AMBER LEDGER' },
   relics: [
     { x: 22.5, y: 3, value: 150, label: 'Silver Seal' },
-    { x: 11, y: 13, value: 150, label: 'Jade Inkwell' },
+    { x: 11, y: 15.5, value: 150, label: 'Jade Inkwell' },
   ],
   exit: { x: 2.5, y: 15.5 },
   start: { x: 2.5, y: 9 },
@@ -218,8 +218,8 @@ const JOB2 = {
   ],
   guards: [
     {
-      name: 'W-1 BRAM', x: 6, y: 6, angle: 0, pause: 1.2, speed: 2.2,
-      waypoints: [[6, 6], [6, 13], [13, 13], [13, 6]],
+      name: 'W-1 BRAM', x: 6, y: 7, angle: 0, pause: 1.2, speed: 2.2,
+      waypoints: [[6, 7], [6, 13], [12, 15.5], [13, 6]],
     },
     {
       name: 'W-2 ODETTE', x: 17, y: 4, angle: Math.PI / 2, pause: 1.6, speed: 2.1,
@@ -241,7 +241,7 @@ const JOB2 = {
   loot: { x: 26.5, y: 3.5, value: 700, label: 'GILDED NOTE' },
   relics: [
     { x: 21.5, y: 3, value: 200, label: 'Brass Key' },
-    { x: 5.5, y: 5, value: 200, label: 'Ivory Abacus' },
+    { x: 5.5, y: 7.5, value: 200, label: 'Ivory Abacus' },
     { x: 27.5, y: 15, value: 200, label: 'Lantern Ruby' },
   ],
   exit: { x: 2.5, y: 15.5 },
@@ -311,12 +311,12 @@ const JOB3 = {
   ],
   guards: [
     {
-      name: 'W-1 BRAM', x: 6, y: 6, angle: 0, pause: 1.2, speed: 2.3,
-      waypoints: [[6, 6], [6, 14], [13, 14], [13, 6]],
+      name: 'W-1 BRAM', x: 6, y: 7, angle: 0, pause: 1.2, speed: 2.3,
+      waypoints: [[6, 7], [6, 14], [13, 14], [13, 6]],
     },
     {
-      name: 'W-2 ODETTE', x: 16, y: 4, angle: Math.PI / 2, pause: 1.5, speed: 2.2,
-      waypoints: [[16, 4], [16, 11], [22, 11], [22, 4]],
+      name: 'W-2 ODETTE', x: 16, y: 3, angle: Math.PI / 2, pause: 1.5, speed: 2.2,
+      waypoints: [[16, 3], [16, 13], [22, 13], [23, 4]],
     },
     {
       name: 'W-3 IVO', x: 28, y: 14, angle: Math.PI, pause: 1.8, speed: 2.1,
@@ -324,7 +324,7 @@ const JOB3 = {
     },
     {
       name: 'W-4 SABLE', x: 18, y: 17, angle: -Math.PI / 2, pause: 2.2, speed: 2.0,
-      waypoints: [[18, 17], [12, 17], [12, 12], [18, 12]],
+      waypoints: [[18, 17], [12, 17], [12, 12], [19, 12.5]],
     },
   ],
   cameras: [
@@ -338,8 +338,8 @@ const JOB3 = {
   loot: { x: 28.5, y: 3.5, value: 1000, label: 'HOLLOW STAR' },
   relics: [
     { x: 23.5, y: 3, value: 250, label: 'Gilt Orrery' },
-    { x: 5.5, y: 5, value: 250, label: 'Meridian Seal' },
-    { x: 15.5, y: 11, value: 250, label: 'Star Chart' },
+    { x: 5.5, y: 7.5, value: 250, label: 'Meridian Seal' },
+    { x: 15.5, y: 13.5, value: 250, label: 'Star Chart' },
   ],
   exit: { x: 2.5, y: 17.5 },
   start: { x: 2.5, y: 10 },
@@ -356,4 +356,132 @@ export function sightBlockersOf(level, playerSneaking) {
   const list = [...level.walls, ...level.crates];
   if (playerSneaking) list.push(...level.cover);
   return list;
+}
+
+// ---------------------------------------------------------------------------
+// Pathfinding — a small grid A* so wardens (and the scripted playthrough)
+// walk AROUND furniture instead of pushing against it. A cell is open when
+// a circle of `radius` centred on it clears every solid; moves between
+// neighbouring cells are checked the same way, and the returned path is
+// shortcut into straight legs. Deterministic: fixed grid, fixed neighbour
+// order, no randomness.
+// ---------------------------------------------------------------------------
+const PATH_CELL = 0.25; // fine enough to thread the 0.36-wide lane between
+// a crate and the cover below it, and the diagonal squeeze between two
+// crate corners (a 0.5 grid misses both and A* wrongly reports no path).
+
+function pointClear(x, y, solids, radius) {
+  for (const b of solids) {
+    if (boxContains(b, x, y, radius)) return false;
+  }
+  return true;
+}
+
+// True when a circle of `radius` can travel the segment without touching
+// a solid (sampled; the step is far smaller than the radius).
+export function segmentClear(x1, y1, x2, y2, solids, radius) {
+  const d = dist(x1, y1, x2, y2);
+  const n = Math.max(1, Math.ceil(d / 0.1));
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    if (!pointClear(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, solids, radius)) return false;
+  }
+  return true;
+}
+
+export function findPath(level, sx, sy, tx, ty, radius = 0.32) {
+  const solids = solidsOf(level);
+  const cols = Math.ceil(level.w / PATH_CELL);
+  const rows = Math.ceil(level.h / PATH_CELL);
+  const cellOf = (x, y) => ({
+    cx: Math.max(0, Math.min(cols - 1, Math.floor(x / PATH_CELL))),
+    cy: Math.max(0, Math.min(rows - 1, Math.floor(y / PATH_CELL))),
+  });
+  const centre = (cx, cy) => ({ x: (cx + 0.5) * PATH_CELL, y: (cy + 0.5) * PATH_CELL });
+  const open = (cx, cy) => {
+    if (cx < 0 || cy < 0 || cx >= cols || cy >= rows) return false;
+    const c = centre(cx, cy);
+    return pointClear(c.x, c.y, solids, radius);
+  };
+  // Nearest open cell to a point (spiral search, bounded).
+  const nearestOpen = (x, y) => {
+    const s = cellOf(x, y);
+    if (open(s.cx, s.cy)) return s;
+    for (let r = 1; r <= 12; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          if (open(s.cx + dx, s.cy + dy)) return { cx: s.cx + dx, cy: s.cy + dy };
+        }
+      }
+    }
+    return null;
+  };
+  const start = nearestOpen(sx, sy);
+  const goal = nearestOpen(tx, ty);
+  if (!start || !goal) return null;
+  const key = (cx, cy) => cy * cols + cx;
+  const gScore = new Map([[key(start.cx, start.cy), 0]]);
+  const came = new Map();
+  const openSet = [{ cx: start.cx, cy: start.cy, f: 0 }];
+  const inOpen = new Set([key(start.cx, start.cy)]);
+  const closed = new Set();
+  const h = (cx, cy) => {
+    const dx = Math.abs(cx - goal.cx), dy = Math.abs(cy - goal.cy);
+    return Math.max(dx, dy) + 0.4142 * Math.min(dx, dy);
+  };
+  const DIRS = [
+    [1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1],
+    [1, 1, 1.4142], [1, -1, 1.4142], [-1, 1, 1.4142], [-1, -1, 1.4142],
+  ];
+  let pops = 0;
+  while (openSet.length) {
+    if (++pops > 6000) return null; // bound a failed search; caller falls back
+    let bi = 0;
+    for (let i = 1; i < openSet.length; i++) if (openSet[i].f < openSet[bi].f) bi = i;
+    const cur = openSet.splice(bi, 1)[0];
+    inOpen.delete(key(cur.cx, cur.cy));
+    if (cur.cx === goal.cx && cur.cy === goal.cy) {
+      const cells = [];
+      let c = { cx: cur.cx, cy: cur.cy };
+      while (c) {
+        cells.push(centre(c.cx, c.cy));
+        const p = came.get(key(c.cx, c.cy));
+        c = p ? { cx: p[0], cy: p[1] } : null;
+      }
+      cells.reverse();
+      // Shortcut: keep only the farthest point reachable in a straight line.
+      const pts = [];
+      let i = 0;
+      let from = { x: sx, y: sy };
+      while (i < cells.length) {
+        let j = cells.length - 1;
+        while (j > i && !segmentClear(from.x, from.y, cells[j].x, cells[j].y, solids, radius)) j--;
+        pts.push(cells[j]);
+        from = cells[j];
+        i = j + 1;
+      }
+      if (segmentClear(from.x, from.y, tx, ty, solids, radius)) pts.push({ x: tx, y: ty });
+      return pts;
+    }
+    closed.add(key(cur.cx, cur.cy));
+    for (const [dx, dy, cost] of DIRS) {
+      const nx = cur.cx + dx, ny = cur.cy + dy;
+      if (!open(nx, ny)) continue;
+      if (dx !== 0 && dy !== 0 && (!open(cur.cx + dx, cur.cy) || !open(cur.cx, cur.cy + dy))) continue;
+      const nk = key(nx, ny);
+      if (closed.has(nk)) continue;
+      const ng = gScore.get(key(cur.cx, cur.cy)) + cost;
+      if (gScore.has(nk) && ng >= gScore.get(nk)) continue;
+      gScore.set(nk, ng);
+      came.set(nk, [cur.cx, cur.cy]);
+      const nf = ng + h(nx, ny);
+      if (!inOpen.has(nk)) { openSet.push({ cx: nx, cy: ny, f: nf }); inOpen.add(nk); }
+      else {
+        const e = openSet.find((o) => o.cx === nx && o.cy === ny);
+        if (e) e.f = nf;
+      }
+    }
+  }
+  return null;
 }
