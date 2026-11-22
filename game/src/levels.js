@@ -124,7 +124,9 @@ const JOB1 = {
   ],
   carpets: [
     { x: 21, y: 1, w: 8, h: 6, color: '#5a1f2b' }, // vault carpet
-    { x: 13, y: 8, w: 16, h: 9, color: '#233246' }, // hall runner
+    // No hall runner: the dark navy rug used to cover the whole south
+    // hall and hide the bright marble in the foreground. The marble
+    // floor shows instead, like the reference's bright floor.
   ],
   labels: [
     { x: 6.5, y: 2.5, text: 'COIN HALL' },
@@ -209,7 +211,7 @@ const JOB2 = {
   ],
   carpets: [
     { x: 20, y: 1, w: 9, h: 6, color: '#5a1f2b' },
-    { x: 1, y: 8, w: 28, h: 2, color: '#233246' },
+    // No navy strip: the bright marble floor shows across the room.
   ],
   labels: [
     { x: 5.5, y: 2.5, text: 'TELLER ROW' },
@@ -300,8 +302,8 @@ const JOB3 = {
   ],
   carpets: [
     { x: 22, y: 1, w: 9, h: 7, color: '#5a1f2b' },
-    { x: 11, y: 9, w: 20, h: 2, color: '#233246' },
     { x: 1, y: 1, w: 9, h: 8, color: '#2c2417' },
+    // No navy strip: the bright marble floor shows across the room.
   ],
   labels: [
     { x: 5.5, y: 2.5, text: 'GALLERY' },

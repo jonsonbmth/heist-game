@@ -51,7 +51,7 @@ export function makeHud() {
     const text = [
       lvl.name, game.jobIndex + 1, p.lootCount, lvl.relics.length,
       taken + relicTaken, totalLoot, fmtTime(game.time), vis,
-      stage.label, p.coins, p.smoke, game.strikes, game.maxSuspicion.toFixed(2),
+      stage.label, Math.round(game.alarmLevel * 100), p.coins, p.smoke, game.strikes, game.maxSuspicion.toFixed(2),
     ].join('|');
     if (text === lastHudText) return;
     lastHudText = text;
@@ -78,6 +78,12 @@ export function makeHud() {
     const al = $('alarm-label');
     if (al) { al.textContent = stage.label; al.className = `alarm-label ${stage.cls}`; }
     $('hud-alarm-pct').textContent = `${Math.round(game.alarmLevel * 100)}%`;
+    // Compact alarm chip: the same state, shown while the right panel
+    // is collapsed so the alarm never leaves the frame.
+    const chipLabel = $('alarm-chip-label');
+    if (chipLabel) { chipLabel.textContent = stage.label; chipLabel.className = `chip-label ${stage.cls}`; }
+    const chipPct = $('alarm-chip-pct');
+    if (chipPct) chipPct.textContent = `${Math.round(game.alarmLevel * 100)}%`;
     $('hud-noise').textContent = p.noise > 0.6 ? 'LOUD' : p.noise > 0.15 ? 'SOFT' : 'SILENT';
     $('hud-noise').className = p.noise > 0.6 ? 'loud' : '';
     $('hud-strikes').textContent = '●'.repeat(game.strikes) + '○'.repeat(3 - game.strikes);

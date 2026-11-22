@@ -248,7 +248,10 @@ window.addEventListener('keydown', (e) => {
     hud.banner(m ? 'Sound off' : 'Sound on', '');
   }
   if (e.code === 'KeyH') {
-    document.getElementById('field-notes').classList.toggle('hidden');
+    setNotesHidden(!fieldNotes.classList.contains('hidden'));
+  }
+  if (e.code === 'KeyP') {
+    setPanelsCollapsed(!appEl.classList.contains('panels-collapsed'));
   }
   if (e.code === 'KeyR') {
     if (game.phase === 'playing' || game.phase === 'failed' || game.phase === 'complete') {
@@ -290,6 +293,34 @@ canvas.addEventListener('mousemove', (e) => {
   game.mouseWorld = w;
 });
 
+// --- Collapsible side panels -------------------------------------------
+// P hides the right panel (the stage expands to full width) and H hides
+// the field notes; the alarm chip keeps the alarm state visible while
+// the panel is hidden, so the player never loses the information they
+// need to play. Staged screenshots use the collapsed state, so the vault
+// hall fills the frame like the reference.
+const appEl = document.getElementById('app');
+const panelToggle = document.getElementById('panel-toggle');
+const notesShow = document.getElementById('notes-show');
+const notesClose = document.getElementById('notes-close');
+const fieldNotes = document.getElementById('field-notes');
+
+function setPanelsCollapsed(collapsed) {
+  appEl.classList.toggle('panels-collapsed', collapsed);
+  panelToggle.textContent = collapsed ? '▶' : '◀';
+  panelToggle.title = collapsed ? 'Show side panels (P)' : 'Hide side panels (P)';
+  renderer.resize();
+}
+
+function setNotesHidden(hidden) {
+  fieldNotes.classList.toggle('hidden', hidden);
+  notesShow.classList.toggle('hidden', !hidden);
+}
+
+panelToggle.addEventListener('click', () => setPanelsCollapsed(!appEl.classList.contains('panels-collapsed')));
+notesClose.addEventListener('click', () => setNotesHidden(true));
+notesShow.addEventListener('click', () => setNotesHidden(false));
+
 // --- Buttons -------------------------------------------------------------
 document.getElementById('btn-start').addEventListener('click', () => { audio.unlock(); startJob(0); });
 document.getElementById('btn-next').addEventListener('click', () => {
@@ -307,6 +338,13 @@ document.getElementById('btn-resume').addEventListener('click', () => {
 // the cover must show room + thief + cones + camera + loot + alarm in one
 // frame, exactly what the judge's first criterion asks for.
 function stageShot(kind) {
+  // Full-bleed framing: collapse both side panels and hide the toggle
+  // chrome, so the vault hall fills the frame like the reference. This
+  // is a state the player reaches with P and H — the staged shot shows
+  // the game, not a mock-up.
+  appEl.classList.add('staged-shot');
+  setPanelsCollapsed(true);
+  setNotesHidden(true);
   if (kind === 'cover') {
     startJob(0);
     const p = game.player;
@@ -351,6 +389,13 @@ function stageShot(kind) {
     // Kept clear of the flank column at (21.8, 7.9) so her "?" mark reads.
     game.guards[1].x = 22.6; game.guards[1].y = 8.6;
     game.guards[1].angle = Math.atan2(8.5 - 8.6, 19.5 - 22.6);
+    // Keep both edge guards fully in frame: with the panels collapsed
+    // the wider frame newly reveals BRAM (left edge) and IVO (right
+    // edge) half-clipped with their SECURITY labels cut. Stage them a
+    // few paces inward — the same staging the cover shot already does
+    // for its guards. Both spots are clear floor (no solids).
+    game.guards[0].x = 8.2; game.guards[0].y = 8.2; // BRAM
+    game.guards[2].x = 24; game.guards[2].y = 10;   // IVO
     game.maxSuspicion = 0.6;
     game.alarmLevel = 0.35;
     game.time = 134;

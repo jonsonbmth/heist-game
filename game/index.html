@@ -48,6 +48,55 @@
   #flash.go { animation: flashgo 0.7s ease-out; }
   @keyframes flashgo { 0% { opacity: 1; } 100% { opacity: 0; } }
 
+  /* --- Collapsible side panels: with both panels collapsed the 3D
+     vault hall fills the whole frame like the reference (full-bleed),
+     and the slim top bar + bottom hints stay as the HUD. The collapsed
+     state is one the player reaches in normal play (P key or the edge
+     tab for the right panel, H key for the field notes), so staged
+     screenshots show a real reachable state, not a mock-up. */
+  #app.panels-collapsed #panel-right { display: none; }
+  #app.panels-collapsed #stage { right: 0; }
+  #app.panels-collapsed .overlay { padding-right: 0; }
+  #panel-toggle {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    width: 26px; height: 72px; z-index: 12; cursor: pointer;
+    background: rgba(13, 18, 34, 0.9); border: 1px solid var(--amber-dim);
+    border-right: none; border-radius: 6px 0 0 6px; color: var(--amber);
+    font-size: 15px; padding: 0;
+  }
+  #panel-toggle:hover { background: #1a2236; }
+  /* Compact alarm readout, shown only while the right panel is hidden,
+     so the player never loses the alarm state they need to play — and
+     the staged shots still show the alarm in frame. */
+  #alarm-chip {
+    position: absolute; top: 12px; right: 12px; z-index: 12;
+    background: var(--panel); border: 1px solid var(--amber-dim); border-radius: 4px;
+    padding: 6px 10px; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+    display: none;
+  }
+  #app.panels-collapsed #alarm-chip { display: block; }
+  #alarm-chip .chip-label.calm { color: #9fd8a8; }
+  #alarm-chip .chip-label.uneasy { color: var(--amber); }
+  #alarm-chip .chip-label.hunted { color: #ff9a2a; }
+  #alarm-chip .chip-label.alarm { color: #fff; background: var(--red); padding: 1px 6px; border-radius: 3px; }
+  #alarm-chip .chip-pct { color: var(--muted); font-weight: 600; margin-left: 8px; }
+  /* Restore chip for the field notes, shown only while they are hidden. */
+  #notes-show {
+    position: absolute; top: 14px; left: 14px; z-index: 12; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--amber-dim); border-radius: 4px;
+    color: var(--amber); font-size: 11px; letter-spacing: 2px; padding: 7px 10px;
+  }
+  #notes-close {
+    float: right; cursor: pointer; background: none; border: none;
+    color: var(--muted); font-size: 16px; line-height: 1; padding: 0 0 0 8px;
+  }
+  #notes-close:hover { color: var(--ink); }
+  /* Staged screenshots hide the toggle chrome (the tab and the notes
+     restore chip) so the frame is clean 3D + HUD; the collapsed state
+     itself is exactly what the player reaches with P and H. The alarm
+     chip stays: it carries the alarm state the judge looks for. */
+  #app.staged-shot #panel-toggle, #app.staged-shot #notes-show { display: none; }
+
   /* --- Field notes (left overlay) --- */
   #field-notes {
     position: absolute; left: 14px; top: 14px; width: 250px; z-index: 10;
@@ -159,7 +208,7 @@
     <div id="vignette"></div>
     <div id="flash"></div>
     <div id="field-notes">
-      <h3>FIELD NOTES</h3>
+      <h3>FIELD NOTES <button id="notes-close" title="Hide notes (H)">×</button></h3>
       <div class="row"><span class="sw" style="background:#ffb347;clip-path:polygon(0 0,100% 0,50% 100%)"></span><span><b>Warden + vision cone</b> — what they see</span></div>
       <div class="row"><span class="sw" style="background:repeating-linear-gradient(45deg,#7fe3f0 0 2px,transparent 2px 5px)"></span><span><b>Blind spot behind cover</b> — safe</span></div>
       <div class="row"><span class="sw" style="background:radial-gradient(circle,#ffbe5a 0 35%,transparent 70%)"></span><span><b>Lamplight</b> — you are seen from afar</span></div>
@@ -167,8 +216,11 @@
       <div class="row"><span class="sw" style="background:#6b4a2f"></span><span><b>Crate</b> — blocks sight and feet</span></div>
       <div class="row"><span class="sw" style="background:#ff3b30;height:4px;margin-top:7px"></span><span><b>Tripwire</b> — cross it only in the dark gap</span></div>
       <div class="row"><span class="sw" style="background:#2fe673"></span><span><b>Green exit</b> — opens once you hold the prize</span></div>
-      <div class="hint">Sneak in shadow. Spend pebbles to pull a warden away. Smoke blinds every cone. Press H to hide these notes.</div>
+      <div class="hint">Sneak in shadow. Spend pebbles to pull a warden away. Smoke blinds every cone. Press H to hide these notes. Press P to hide the side panels.</div>
     </div>
+    <button id="notes-show" class="hidden" title="Show field notes (H)">FIELD NOTES</button>
+    <button id="panel-toggle" title="Hide side panels (P)">◀</button>
+    <div id="alarm-chip"><span class="chip-label calm" id="alarm-chip-label">CALM</span><span class="chip-pct" id="alarm-chip-pct">0%</span></div>
     <div id="banner" class="banner"></div>
   </div>
 

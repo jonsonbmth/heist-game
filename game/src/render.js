@@ -277,6 +277,61 @@ function plasterTexture(base, seed) {
   });
 }
 
+// A coffered vault-hall ceiling: warm dark panels in a gold-trimmed
+// grid with bright recessed light panels. Painted as one texture (no
+// hanging beams — the camera travels just below the ceiling, so any
+// geometry hanging down would clip through it). Used as both the colour
+// map and the emissive map, so the light panels glow softly while the
+// dark coffers stay dark.
+function ceilingTexture(seed) {
+  const rnd = mulberry32(seed);
+  return canvasTexture(1024, 1024, (g, w, h) => {
+    g.fillStyle = '#241b12';
+    g.fillRect(0, 0, w, h);
+    const cols = 6, rows = 4;
+    const cw = w / cols, ch = h / rows;
+    for (let cx = 0; cx < cols; cx++) {
+      for (let cy = 0; cy < rows; cy++) {
+        const x = cx * cw, y = cy * ch;
+        // Recessed panel: slightly lighter centre, dark inset border.
+        g.fillStyle = '#31271a';
+        g.fillRect(x + 6, y + 6, cw - 12, ch - 12);
+        g.fillStyle = '#1c140c';
+        g.fillRect(x + 18, y + 18, cw - 36, ch - 36);
+        g.fillStyle = '#2e2417';
+        g.fillRect(x + 26, y + 26, cw - 52, ch - 52);
+        // Gold trim around the coffer.
+        g.strokeStyle = 'rgba(180,145,80,0.85)';
+        g.lineWidth = 4;
+        g.strokeRect(x + 10, y + 10, cw - 20, ch - 20);
+      }
+    }
+    // Recessed light panels: bright warm rectangles with a soft halo,
+    // one in every other coffer so the ceiling reads as lit, not flat.
+    for (let cx = 0; cx < cols; cx++) {
+      for (let cy = 0; cy < rows; cy++) {
+        if ((cx + cy) % 2 !== 0) continue;
+        const x = cx * cw + cw / 2, y = cy * ch + ch / 2;
+        const halo = g.createRadialGradient(x, y, 4, x, y, cw * 0.42);
+        halo.addColorStop(0, 'rgba(255, 225, 170, 0.55)');
+        halo.addColorStop(1, 'rgba(255, 225, 170, 0)');
+        g.fillStyle = halo;
+        g.fillRect(x - cw * 0.45, y - ch * 0.45, cw * 0.9, ch * 0.9);
+        g.fillStyle = '#ffedbe';
+        g.fillRect(x - cw * 0.22, y - ch * 0.16, cw * 0.44, ch * 0.32);
+        g.strokeStyle = 'rgba(200,160,90,0.9)';
+        g.lineWidth = 3;
+        g.strokeRect(x - cw * 0.22, y - ch * 0.16, cw * 0.44, ch * 0.32);
+      }
+    }
+    // Speckle so the dark wood is not a flat wash.
+    for (let i = 0; i < 1200; i++) {
+      g.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.06)';
+      g.fillRect(rnd() * w, rnd() * h, 2, 2);
+    }
+  });
+}
+
 // A flat sector (vision cone / camera arc) centred on +X, in the XZ plane.
 function sectorGeometry(radius, halfAngle) {
   const geo = new THREE.CircleGeometry(radius, 40, -halfAngle, halfAngle * 2);
@@ -340,7 +395,10 @@ export function createRenderer(canvas) {
   // establishing camera so the whole vault hall reads in one grand frame
   // like the reference: the vault door, the columns, the carpet and the
   // guards all in view at once. Live play keeps the closer follow camera.
-  const STAGE_HEIGHT = 6.2;
+  // The staged height stays below the 6-high ceiling, so the camera is
+  // inside the room and the top of the frame shows finished ceiling,
+  // never void.
+  const STAGE_HEIGHT = 5.7;
   const STAGE_FOV = 70;
   const STAGE_LOOK_AHEAD = 6.0;
   const STAGE_LOOK_HEIGHT = 1.3;
@@ -465,34 +523,37 @@ export function createRenderer(canvas) {
       const badge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.13, 0.02), goldMat);
       badge.position.set(0, 1.3, 0.23);
       g.add(badge);
-      // A simple readable face: dark eyes, a nose and a mouth on the
-      // skin-tone head. The eyes sit low (y 1.63) so the cap brim does
-      // not hide them from the low camera's downward angle.
+      // A simple readable face: large dark eyes, a nose and a mouth on
+      // the skin-tone head, sized to read at the camera's distance. The
+      // eyes sit low (y 1.63) so the cap brim does not hide them from
+      // the low camera's downward angle.
       const eyeMat = new THREE.MeshStandardMaterial({ color: 0x14100d, roughness: 0.4 });
       for (const s of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), eyeMat);
-        eye.position.set(s * 0.062, 1.63, 0.155);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 8), eyeMat);
+        eye.position.set(s * 0.066, 1.63, 0.145);
         g.add(eye);
       }
       const noseMat = new THREE.MeshStandardMaterial({ color: 0xb98d63, roughness: 0.8 });
-      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), noseMat);
-      nose.position.set(0, 1.59, 0.158);
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 8), noseMat);
+      nose.position.set(0, 1.59, 0.155);
       g.add(nose);
       const mouth = new THREE.Mesh(
-        new THREE.BoxGeometry(0.09, 0.018, 0.012),
+        new THREE.BoxGeometry(0.12, 0.024, 0.012),
         new THREE.MeshStandardMaterial({ color: 0x5a2e22, roughness: 0.8 }),
       );
-      mouth.position.set(0, 1.55, 0.152);
+      mouth.position.set(0, 1.55, 0.15);
       g.add(mouth);
     }
     return { group: g, legL, legR, armL, armR };
   }
 
   // A tall white column with gold base and capital, like the reference.
+  // The shaft reaches the 6-high ceiling: base 0-0.35, shaft 0.3-5.6,
+  // capital 5.6-5.95, top plate flush with the ceiling at 6.0.
   function makeColumn() {
     const g = new THREE.Group();
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 4.6, 14), whiteMat);
-    shaft.position.y = 2.5;
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 5.3, 14), whiteMat);
+    shaft.position.y = 2.95;
     shaft.castShadow = true;
     shaft.receiveShadow = true;
     g.add(shaft);
@@ -504,14 +565,14 @@ export function createRenderer(canvas) {
     baseRing.position.y = 0.38;
     g.add(baseRing);
     const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.38, 0.35, 14), goldMat);
-    capital.position.y = 4.95;
+    capital.position.y = 5.775;
     g.add(capital);
     const capRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 8, 20), goldMat);
     capRing.rotation.x = Math.PI / 2;
-    capRing.position.y = 4.75;
+    capRing.position.y = 5.6;
     g.add(capRing);
     const top = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.14, 1.05), whiteMat);
-    top.position.y = 5.2;
+    top.position.y = 5.93;
     g.add(top);
     return g;
   }
@@ -713,6 +774,24 @@ export function createRenderer(canvas) {
     base.position.set(level.w / 2, -0.02, level.h / 2);
     base.receiveShadow = true;
     levelGroup.add(base);
+
+    // Ceiling: a coffered vault-hall ceiling flush with the 6-high wall
+    // tops, so the top of the frame is finished architecture instead of
+    // the dark void the camera used to see over the north wall. It never
+    // casts a shadow — the key light sits above it, and a shadow-casting
+    // ceiling would black out the room. Double-sided so it reads from
+    // any camera angle.
+    const ceilTex = ceilingTexture(level.id * 331 + 7);
+    const ceiling = new THREE.Mesh(
+      new THREE.PlaneGeometry(level.w, level.h),
+      new THREE.MeshStandardMaterial({
+        map: ceilTex, emissiveMap: ceilTex, emissive: 0xffe6b8, emissiveIntensity: 0.5,
+        roughness: 0.9, side: THREE.DoubleSide,
+      }),
+    );
+    ceiling.rotation.x = Math.PI / 2; // face down into the room
+    ceiling.position.set(level.w / 2, 6.0, level.h / 2);
+    levelGroup.add(ceiling);
 
     // The level's own rugs, with a woven border.
     for (const c of level.carpets || []) {
@@ -1003,8 +1082,11 @@ export function createRenderer(canvas) {
     levelGroup.add(exitGroup);
     dynamic.exit = { group: exitGroup, pad, ring: exitRing, label: exitLabel, beamMat };
 
-    // Guards: full humanoid security guards — navy uniform, cap with a
-    // brim, gold badge, a SECURITY label overhead, a state ring underfoot
+    // Guards: full humanoid security guards — a LIGHT uniform like the
+    // reference's white-jacketed guards (dark navy trousers and cap, so
+    // they still read as security, but the light jacket makes them
+    // visible across the room instead of melting into the dark floor),
+    // gold badge, a SECURITY label overhead, a state ring underfoot
     // and a translucent vision cone on the floor. The figure is built
     // facing +Z and turned 90 degrees, because the guard group's forward
     // axis (the cone's axis) is +X.
@@ -1012,7 +1094,7 @@ export function createRenderer(canvas) {
     for (const g of level.guards) {
       const group = new THREE.Group();
       const fig = makeHumanoid({
-        shirt: 0x2c3f66, pants: 0x232f4a, skin: 0xd8b48f, cap: 0x1e2a44, hood: false,
+        shirt: 0xe9e5da, pants: 0x232f4a, skin: 0xd8b48f, cap: 0x1e2a44, hood: false,
       });
       fig.group.rotation.y = Math.PI / 2;
       group.add(fig.group);
